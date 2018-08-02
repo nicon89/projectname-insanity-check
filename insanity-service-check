@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+export projectName='dev'
+if [ $# != 2 ]; then
+  echo -ne "USAGE:\nexport projectName='dev' $0 server-list user\n\nFor example:\n$0 ${projectName}-hosts-list root"; exit 1
+fi
+
+HOSTSDIR='hosts'
+CONFDIR='conf'
+SERVER_LIST=$HOSTS/$1
+PASS=$(cat ${CONFDIR}/.passwd)
+USER=$2
+pnweb=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep pdweb)
+pnapp=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep pdapp)
+pnbjweb=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep pdboweb)
+pnbjapp=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep pdboapp)
+pnlb=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep pdbroker)
+pn2db=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep cmddb)
+pn2con=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep cmdconnect)
+pn2bjweb=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep cmdboweb)
+pn2bjapp=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep cmdboapp)
+
+for SERVER in pnweb pnapp pnbjweb pnbjapp pnlb pn2db pn2con pn2bjweb pn2bjapp; do
+  echo -e "\n### Checking services on ${!SERVER} ###"
+  for service in `cat ${CONFDIR}/${SERVER}-service-list`; do
+    COMMAND=`sshpass -p $PASS ssh -q -t -o StrictHostKeyChecking=no $USER@${!SERVER} "systemctl status $service > /dev/null 2>&1"`; echo -e "## Service $service status: $? ##"
+  done
+done
