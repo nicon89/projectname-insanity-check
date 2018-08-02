@@ -1,4 +1,4 @@
-# ${projectName} (in)Sanity Check
+# ref-insanity-check
 
 ## Just run it and enjoy.
 
@@ -9,7 +9,7 @@
     * [Usage](#usage)
 3. [Future plans for the Project Development](#future)
 4. [Annotations](#annotations)
-5. [Credits](#theducks)
+5. [Credits](#credits)
 
 ## Description
 
@@ -43,7 +43,7 @@ vm1337 $ logout
 d
 ```
 
-## Future plans for the Project Development
+### Future plans for the Project Development
 
 r*t lead developer had a dream about havivng:
 * reports
@@ -62,6 +62,7 @@ i've wanted also to thank you for the music, for giving it to me.
 ```
 
 ### Credits
+#theducks
 
 copyright 2018 nicon89 aka The Writer.
 any changes are rised by jira requrest, or git issues and need to follow git workflow prcess
