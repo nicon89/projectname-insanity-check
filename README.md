@@ -1,6 +1,6 @@
-# ref-insanity-check
+# Reference Insanity Check
 
-## Just run it and enjoy.
+### Just run it and enjoy.
 
 #### Table of Contents
 1. [Description](#description)
@@ -8,65 +8,85 @@
     * [Setup requirements](#setup-requirements)
     * [Usage](#usage)
 3. [Future plans for the Project Development](#future)
-4. [Annotations](#annotations)
-5. [Credits](#credits)
+4. [Bugtrack](#buqtrack)
+5. [Annotations](#annotations)
+6. [Copyrights](#theducks)
 
-## Description
+### Description
 
-this script is the dream of the lead developer in r*t project.
-you need to run it few minutes after the deployment (not release, for duck stake).
+this script was a wet dream of the lead developer in some random project.
+you need to run it few minutes after the deployment (not release, for duck sake).
 
-## Setup
+### Setup
 
-### Setup requirements
+##### Setup requirements
 
-you need to have brainsi, ssh-kinda-tool and no zombies around.
+you need to have brainz and ssh-kinda-tool and no zombies around.
 
-### Usage
+##### Usage
 
 start hacking with:
 ```
-toor
+upa.8vm1337# 
+vm1337 # 
+vm1337 # 
 vm1337 # 
 vm1337 # yum install screen sshpass
-vm1337 # git clone https://github.com/nicon89/ref-insanity-check
-vm1337 # cd instanity-check
-vm1337 # curl wiki/sites/ref#prod | awk {'print $1'} >> hosts/dev-hosts-list
+vm1337 # git clone git@github.com:nicon89/ref-insanity-check.git
+vm1337 # cd ref-insanity-check
+vm1337 # curl wiki/hosts | awk {'print $1'} >> hosts/devjboss (if you know what I mean)
+# if your servers don't include name in hostname you can use this:
+# xyz1337 PNWEB
+# xyz420 PN2BOAPP
+# xyz2137 PN2GAME
+# and so on...
 vm1337 # 
 # configure services you want to check in conf/*-service-list
 # configure $USER ($2) password in conf/.passwd (default already set)
-vm1337 # ./insanity-service-check dev-hosts-list root
-vm1337 # [...stuff on a screen going on...]
+# configure disabled-services.example and move to disabled-services
+vm1337 # ./insanity-check qajboss root service
+[...stuff on screen going on...]
+# configure containers in conf/*-container-list
+vm1337 # ./insanity-check devjboss root marker
+[...stuff on a screen going on...]
+# you can also use sudo mode, but there are some issues with this when run from jenkins*
+vm1337 # ./insanity-check prodjboss nicon service sudo
 vm1337 # d
 vm1337 # logout
 vm1337 $ logout
 d
 ```
 
+#### Jenkins
+###### you can also do some jenkins jiu jitsu with Jenkins DSL Groovy, if you need help with this just let me know.
+
 ### Future plans for the Project Development
 
-r*t lead developer had a dream about havivng:
+##### random project lead developer had a wet dream about havivng:
 * reports
   * html
-  * jenkins (colors, fails, final report)
-* app checks
-  * check for deployed, deploying, failed *appexec files (the wet)
-  * check disk space on the portal servers (then ask a user if he/she wants to run rm -Rfv /* on server depending on current disk space usage. Options: y/n: 'y' will work for 'no', 'n', will work for 'yes')
+  * ~~jenkins (colors, fails, final report)~~
+* jboss checks
+  * ~~check for deployed, deploying, failed ear files (the wet)~~
+  * check list of markers to see if they are deployed
 
-### Annotations
+#### Buqtrack
+ * 000001 - sudo issue in jenkins, I don't really have time to fix this one, you're more than welcome to fix it by yourself if you care, kthxbye. PS. Proposed fix: /etc/sudoers controled by Puppet/Ansible/Whatever.
+
+
+##### Annotations
 
 ```
-i've wanted to thank very much my mentor, my sensei, mr. eN Jay aka main vip.
-i also wanted to thank my dear friend, an assistant and the bj project lead, mr pee jay.
-i've wanted also to thank you for the music, for giving it to me.
+i've wanted to thank very much my mentor, my sensei, mr. nj
+huge thanks to my dear pain-in-the-ass friend and an assistant, the b guy, mr pee.
+i've wanted to thanks for the music, for giving it to me.
+this manual was done with a help of [editor.md](https://pandao.github.io/editor.md/en.html)
 ```
 
-### Credits
-#theducks
+##### Copyrights
 
-copyright 2018 nicon89 aka The Writer.
-any changes are rised by jira requrest, or git issues and need to follow git workflow prcess
-each change/fix needs to have separated branch and be merged after review.
+###### copyright 2018 nicon@bash.org.pl
+###### each change/fix needs to have separated branch and (may) be merged after review.
 * create new branch
 * code & qa
-* raise merge request and assign to nicon89 or nicon89.
+* rise merge request and assign to the owner.

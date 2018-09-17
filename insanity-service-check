@@ -1,27 +1,177 @@
 #!/usr/bin/env bash
-export projectName='dev'
-if [ $# != 2 ]; then
-  echo -ne "USAGE:\nexport projectName='dev' $0 server-list user\n\nFor example:\n$0 ${projectName}-hosts-list root"; exit 1
+
+# VARS
+HOSTSDIR='hosts'
+MODE=$3
+CONFDIR='conf'
+SERVER_LIST=$1
+ESC="\033["
+
+# Test if SERVER_LIST exists
+if [[ ! -e $HOSTSDIR/$SERVER_LIST ]]; then
+  printf "${ESC};31mFAIL: Can't find server list, please check it.${ESC}0m"; exit 1
 fi
 
-HOSTSDIR='hosts'
-CONFDIR='conf'
-SERVER_LIST=$HOSTS/$1
+# Usage function
+usage() {
+  echo -e "${BOLD}USAGE${UNBOLD}:
+  ${ESC};33m$0 server-list user mode (service|marker) [sudo]${ESC}0m\n${BOLD}Examples${UNBOLD}:
+  ${ESC};33m$0 devjboss root marker
+  $0 qajboss devops service sudo
+  $0 prodjboss nicon marker sudo${ESC}0m"; exit 1
+}
+
+# Test nummber of parameters
+if [[ ( $# != 3 && $# != 4 ) ]]; then
+  usage
+fi
+
 PASS=$(cat ${CONFDIR}/.passwd)
 USER=$2
-pnweb=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep pdweb)
-pnapp=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep pdapp)
-pnbjweb=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep pdboweb)
-pnbjapp=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep pdboapp)
-pnlb=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep pdbroker)
-pn2db=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep cmddb)
-pn2con=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep cmdconnect)
-pn2bjweb=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep cmdboweb)
-pn2bjapp=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep cmdboapp)
+SUDO=$4
+TMPDIR='./tmp'
+PNWEB=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pnweb | awk {'print $1'})
+PNAPP=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pnapp | awk {'print $1'})
+PNBOWEB=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pnboweb | awk {'print $1'})
+PNBOAPP=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pnboapp | awk {'print $1'})
+PNBROKER=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pnbroker | awk {'print $1'})
+PNCRM=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pncrm | awk {'print $1'})
+PNGAME=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pngame | awk {'print $1'})
+PN2DB=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pn2db | awk {'print $1'})
+PN2PAM=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pn2pam | awk {'print $1'})
+PN2CONNECT=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pn2connect | awk {'print $1'})
+PN2BROKER=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pn2broker | awk {'print $1'})
+PN2BOWEB=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pn2boweb | awk {'print $1'})
+PN2BOAPP=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pn2boapp | awk {'print $1'})
+DISABLED_LIST="${CONFDIR}/disabled-list"
+FAIL=0
+WARN=0
+BOLD="${ESC}1m"
+UNBOLD="${ESC}21m"
+RANDOM_SERVER=`head -$((${RANDOM} % \`wc -l < ${HOSTSDIR}/${SERVER_LIST}\` + 1)) ${HOSTSDIR}/${SERVER_LIST} | tail -1`
 
-for SERVER in pnweb pnapp pnbjweb pnbjapp pnlb pn2db pn2con pn2bjweb pn2bjapp; do
-  echo -e "\n### Checking services on ${!SERVER} ###"
-  for service in `cat ${CONFDIR}/${SERVER}-service-list`; do
-    COMMAND=`sshpass -p $PASS ssh -q -t -o StrictHostKeyChecking=no $USER@${!SERVER} "systemctl status $service > /dev/null 2>&1"`; echo -e "## Service $service status: $? ##"
+# SSH test
+sshtest() {
+  printf "${ESC};4m${BOLD}Testing SSH connection with user ${USER} on ${RANDOM_SERVER} server...${ESC}0m\n\n${BOLD}Log:\n"
+  SSHTEST=`sshpass -p $PASS ssh -t $USER@${RANDOM_SERVER} true`; RC=$?
+  if [[ $RC -eq 0 ]]; then
+    printf "\n${ESC};32mSSH Test ${BOLD}passed!${ESC}0m\n"
+  elif [[ $RC -eq 255 ]]; then
+    printf "\n${ESC};31mSSH Test ${BOLD}failed${UNBOLD}!\nExample server (${RANDOM_SERVER}) did not respond!${ESC}0m"; exit 1
+  elif [[ $RC -eq 5 ]]; then
+    printf "\n${ESC};31mSSH Test ${BOLD}failed${UNBOLD}!\nCheck username (current: ${USER}) or password (in conf/.passwd)!${ESC}0m"; exit 1
+  fi
+}
+sshtest
+
+# Check sudo parameter
+if [[ $SUDO == 'sudo' ]]; then
+  SUDO_PREFIX="echo ${PASS} | sudo -S --"
+fi
+
+# Cleanup TMPDIR
+rm -rf $TMPDIR
+mkdir $TMPDIR
+
+# Service Function
+service() {
+  for SERVER in PNWEB PNAPP PNBOWEB PNBOAPP PNBROKER PNCRM PNGAME PN2DB PN2PAM PN2CONNECT PN2BROKER PN2BOWEB PN2BOAPP; do
+    printf "\n${ESC};4m${BOLD}Checking services on ${!SERVER}${ESC}0m\n"
+    for SERVICE in `cat ${CONFDIR}/${SERVER}-service-list`; do
+      COMMAND=`sshpass -p ${PASS} ssh -q -t -o StrictHostKeyChecking=no $USER@${!SERVER} "${SUDO_PREFIX} /bin/sh -c 'systemctl status ${SERVICE} > /dev/null 2>&1'"`; RC=$?
+      if [[ $RC -ne 0 ]]; then
+        if egrep -q "^${SERVICE}$" ${DISABLED_LIST}; then
+          printf "${ESC};33m${BOLD}WARN${UNBOLD}: ${BOLD}Disabled${UNBOLD} service check ${SERVICE} return code: ${TAB}${RC}${ESC}0m\n"; WARN=$((WARN+1))
+        else
+          printf "${ESC};31m${BOLD}FAIL${UNBOLD}: Service check ${SERVICE} return code: ${TAB}${RC}${ESC}0m\n"; FAIL=$((FAIL+1))
+        fi
+      else
+        if egrep -q "^${SERVICE}$" ${DISABLED_LIST}; then
+          printf "${ESC};31m${BOLD}FAIL${UNBOLD}: ${BOLD}disabled${UNBOLD} Service check ${SERVICE} return code: ${TAB}${RC}${ESC}0m\n"; FAIL=$((FAIL+1))
+        else
+          printf "${ESC};32m${BOLD}OKAY${UNBOLD}: Service check ${SERVICE} return code: ${TAB}${RC}${ESC}0m\n"
+        fi
+      fi
+    done
   done
-done
+}
+
+# Marker function
+marker() {
+  printf "${ESC};4m${BOLD}Checking failed/deployed markers on all servers\n${ESC}0m"
+  for SERVER in PNAPP PNBOAPP PNCRM PNGAME PN2PAM PN2CONNECT PN2BOAPP; do
+    for CONTAINER in `cat ${CONFDIR}/${SERVER}-container-list`; do
+      printf "${ESC}4m\nSearching for markers on ${!SERVER} in /usr/share/jbossas/${CONTAINER}${ESC}0m\n"
+      EXIST_CHECK=`sshpass -p ${PASS} ssh -q -t -o StrictHostKeyChecking=no $USER@${!SERVER} "${SUDO_PREFIX} /bin/sh -c \"[[ -e /usr/share/jbossas/${CONTAINER}/deployments ]]\""`; RC=$?
+      if [[ $RC -eq 0 ]]; then
+        sshpass -p ${PASS} ssh -q -t -o StrictHostKeyChecking=no $USER@${!SERVER} "${SUDO_PREFIX} /bin/sh -c \"find /usr/share/jbossas/${CONTAINER}/deployments -name '*.deployed'\"" > ${TMPDIR}/${SERVER}-${CONTAINER}.deployed
+        sshpass -p ${PASS} ssh -q -t -o StrictHostKeyChecking=no $USER@${!SERVER} "${SUDO_PREFIX} /bin/sh -c \"find /usr/share/jbossas/${CONTAINER}/deployments -name '*.failed'\"" > ${TMPDIR}/${SERVER}-${CONTAINER}.failed
+      	DEPLOYED=`grep -v sudo $TMPDIR/${SERVER}-${CONTAINER}.deployed | wc -l`
+      	FAILED=`grep -v sudo $TMPDIR/${SERVER}-${CONTAINER}.failed | wc -l`
+        if [[ $DEPLOYED -gt 1 ]]; then
+          if egrep -q "^${CONTAINER}$" ${DISABLED_LIST}; then
+            echo -e "${ESC};31m${BOLD}FAIL${UNBOLD}: Found *.deployed files, even though container ${CONTAINER} is ${BOLD}disabled${UNBOLD}!\n\n
+            ${BOLD}Deployed:${UNBOLD}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.deployed | grep -v sudo`${ESC}0m\n"
+            FAIL=$((FAIL+1))
+          else
+            printf "${ESC};32m${BOLD}OKAY${UNBOLD}: Found *.deployed files in ${CONTAINER} container.\n\n${BOLD}Deployed:${UNBOLD}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.deployed | grep -v sudo`${ESC}0m\n"
+          fi
+        else
+          if egrep -q "^${CONTAINER}$" ${DISABLED_LIST}; then
+            printf "${ESC};33m${BOLD}WARN${UNBOLD}: No *.deployed files found in ${BOLD}disabled${UNBOLD} container ${CONTAINER}.\n${ESC}0m"; WARN=$((WARN+1))
+          else
+            printf "${ESC};31m${BOLD}FAIL${UNBOLD}: No *.deployed files found in container ${CONTAINER}!\n${ESC}0m"; FAIL=$((FAIL+1))
+          fi
+        fi
+        if [[ $FAILED -gt 1 ]]; then
+          if egrep -q "^${CONTAINER}$" ${DISABLED_LIST}; then
+            echo -e "${ESC};31m${BOLD}FAIL${UNBOLD}: Found *.failed files, even though container ${CONTAINER} is ${BOLD}disabled${UNBOLD}!\n\n${BOLD}Failed:${UNBOLD}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.failed | grep -v sudo`${ESC}0m"; FAIL=$((FAIL+1))
+          else
+            printf "${ESC};31m\n${BOLD}Failed:${UNBOLD}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.failed | grep -v sudo`\n${ESC}0m"; FAIL=$((FAIL+1))
+          fi
+        fi
+      else
+        if egrep -q "^${CONTAINER}$" ${DISABLED_LIST}; then
+          printf "${ESC};33m${BOLD}WARN${UNBOLD}: Directory /usr/share/jbossas/${CONTAINER} (${BOLD}disabled${UNBOLD}) doesn't exists.\n${ESC}0m"; WARN=$((WARN+1))
+        else
+          printf "${ESC};31m${BOLD}FAIL${UNBOLD}: Directory /usr/share/jbossas/${CONTAINER} doesn't exists.\n${ESC}0m"; FAIL=$((FAIL+1))
+        fi
+      fi
+    done
+  done
+  rm -rf $TMPDIR
+}
+
+# Runmode
+case "$MODE" in
+  service)
+    service
+    ;;
+  marker)
+    marker
+    ;;
+  *)
+    usage
+    ;;
+esac
+
+# Status
+status() {
+  printf "\n\n${ESC};4m${BOLD}Status:${ESC}0m\n"
+  if [ $FAIL -gt 0 ]; then
+    printf "${ESC};31m${BOLD}FAIL${UNBOLD}: number of fails: ${FAIL}.\n${ESC}0m";
+    if [ $WARN -gt 0 ]; then
+      printf "${ESC};33m${BOLD}WARN${UNBOLD}: number of warnings: ${WARN}.\n${ESC}0m"
+    fi
+    printf 'Check the log!'
+    exit 1
+  else
+    printf "${ESC};32m${BOLD}OKAY${UNBOLD}: number of fails: ${FAIL}.\n${ESC}0m"
+    if [ $WARN -gt 0 ]; then
+      printf "${ESC};33m${BOLD}WARN${UNBOLD}: number of warnings: ${WARN}\n\n${BOLD}Check the log just in case...\n${ESC}0m"
+    fi
+    printf "${ESC};32m${BOLD}You\'re all set!${ESC}0m\n\n"
+    exit 0
+  fi
+}
+status
