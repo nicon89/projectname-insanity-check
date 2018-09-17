@@ -48,7 +48,7 @@ FAIL=0
 WARN=0
 BOLD="${ESC}1m"
 UNBOLD="${ESC}21m"
-RANDOM_SERVER=`head -$((${RANDOM} % \`wc -l < ${HOSTSDIR}/${SERVER_LIST}\` + 1)) ${HOSTSDIR}/${SERVER_LIST} | tail -1`
+RANDOM_SERVER=`head -$((${RANDOM} % \`wc -l < ${HOSTSDIR}/${SERVER_LIST}\` + 1)) ${HOSTSDIR}/${SERVER_LIST} | tail -1 | awk {'print $1'}`
 
 # SSH test
 sshtest() {
