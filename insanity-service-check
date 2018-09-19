@@ -57,9 +57,9 @@ sshtest() {
   if [[ $RC -eq 0 ]]; then
     printf "\n${ESC};32mSSH Test ${BOLD}passed!${ESC}0m\n"
   elif [[ $RC -eq 255 ]]; then
-    printf "\n${ESC};31mSSH Test ${BOLD}failed${UNBOLD}!\nExample server (${RANDOM_SERVER}) did not respond!${ESC}0m"; exit 1
+    printf "\n${ESC};31mSSH Test ${BOLD}failed${UNBOLD}!\nExample server (${RANDOM_SERVER}) did not respond!${ESC}0m\n"; exit 1
   elif [[ $RC -eq 5 ]]; then
-    printf "\n${ESC};31mSSH Test ${BOLD}failed${UNBOLD}!\nCheck username (current: ${USER}) or password (in conf/.passwd)!${ESC}0m"; exit 1
+    printf "\n${ESC};31mSSH Test ${BOLD}failed${UNBOLD}!\nCheck username (current: ${USER}) or password (in conf/.passwd)!${ESC}0m\n"; exit 1
   fi
 }
 sshtest
