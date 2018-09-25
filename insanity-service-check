@@ -5,18 +5,24 @@ HOSTSDIR='hosts'
 MODE=$3
 CONFDIR='conf'
 SERVER_LIST=$1
-ESC="\033["
+ESC="\e["
+LOGDIR='./log'
 
 # Test if SERVER_LIST exists
 if [[ ! -e $HOSTSDIR/$SERVER_LIST ]]; then
-  printf "${ESC};31mFAIL: Can't find server list, please check it.${ESC}0m"; exit 1
+  printf "${RED}FAIL: Can't find server list, please check it.${NORMAL}" | tee -a $LOGDIR/$LOGFILE; exit 1
+fi
+
+# Create log direrctory
+if [[ ! -d $LOGDIR ]]; then
+  mkdir $LOGDIR
 fi
 
 # Usage function
 usage() {
-  echo -e "${BOLD}USAGE${UNBOLD}:
-  ${ESC};33m$0 server-list user mode (service|marker) [sudo]${ESC}0m\n${BOLD}Examples${UNBOLD}:
-  ${ESC};33m$0 devjboss root marker
+  echo -e "${BOLD}USAGE${NORMAL}:
+  ${YELLOW}$0 server-list user mode (service|marker) [sudo]${ESC}0m\n${BOLD}Examples${NORMAL}:
+  ${YELLOW}$0 devjboss root marker
   $0 qajboss devops service sudo
   $0 prodjboss nicon marker sudo${ESC}0m"; exit 1
 }
@@ -29,7 +35,9 @@ fi
 PASS=$(cat ${CONFDIR}/.passwd)
 USER=$2
 SUDO=$4
+DATE=`date +%m%d%y_%H%M`
 TMPDIR='./tmp'
+LOGFILE="${MODE}-${SERVER_LIST}-${DATE}.log"
 PNWEB=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pnweb | awk {'print $1'})
 PNAPP=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pnapp | awk {'print $1'})
 PNBOWEB=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pnboweb | awk {'print $1'})
@@ -46,20 +54,23 @@ PN2BOAPP=$(cat ${HOSTSDIR}/${SERVER_LIST} | grep -i pn2boapp | awk {'print $1'})
 DISABLED_LIST="${CONFDIR}/disabled-list"
 FAIL=0
 WARN=0
+GREEN="${ESC}32m"
+RED="${ESC}31m"
+YELLOW="${ESC}33m"
 BOLD="${ESC}1m"
-UNBOLD="${ESC}21m"
-RANDOM_SERVER=`head -$((${RANDOM} % \`wc -l < ${HOSTSDIR}/${SERVER_LIST}\` + 1)) ${HOSTSDIR}/${SERVER_LIST} | tail -1 | awk {'print $1'}`
+NORMAL="${ESC}0m"
+RANDOM_SERVER=`head -$((${RANDOM} % \`wc -l < ${HOSTSDIR}/${SERVER_LIST}\` + 1)) ${HOSTSDIR}/${SERVER_LIST} | tail -1`
 
 # SSH test
 sshtest() {
-  printf "${ESC};4m${BOLD}Testing SSH connection with user ${USER} on ${RANDOM_SERVER} server...${ESC}0m\n\n${BOLD}Log:\n"
+  printf "${ESC}4m${BOLD}Testing SSH connection with user ${USER} on ${RANDOM_SERVER} server...${NORMAL}\n${BOLD}Log:${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE
   SSHTEST=`sshpass -p $PASS ssh -t $USER@${RANDOM_SERVER} true`; RC=$?
   if [[ $RC -eq 0 ]]; then
-    printf "\n${ESC};32mSSH Test ${BOLD}passed!${ESC}0m\n"
+    printf "\n${GREEN}SSH Test ${BOLD}passed!${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE
   elif [[ $RC -eq 255 ]]; then
-    printf "\n${ESC};31mSSH Test ${BOLD}failed${UNBOLD}!\nExample server (${RANDOM_SERVER}) did not respond!${ESC}0m\n"; exit 1
+    printf "\n${RED}SSH Test ${BOLD}failed${NORMAL}!\nExample server (${RANDOM_SERVER}) did not respond!${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE; exit 1
   elif [[ $RC -eq 5 ]]; then
-    printf "\n${ESC};31mSSH Test ${BOLD}failed${UNBOLD}!\nCheck username (current: ${USER}) or password (in conf/.passwd)!${ESC}0m\n"; exit 1
+    printf "\n${RED}SSH Test ${BOLD}failed${NORMAL}!\nCheck username (current: ${USER}) or password (in conf/.passwd)!${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE; exit 1
   fi
 }
 sshtest
@@ -81,15 +92,15 @@ service() {
       COMMAND=`sshpass -p ${PASS} ssh -q -t -o StrictHostKeyChecking=no $USER@${!SERVER} "${SUDO_PREFIX} /bin/sh -c 'systemctl status ${SERVICE} > /dev/null 2>&1'"`; RC=$?
       if [[ $RC -ne 0 ]]; then
         if egrep -q "^${SERVICE}$" ${DISABLED_LIST}; then
-          printf "${ESC};33m${BOLD}WARN${UNBOLD}: ${BOLD}Disabled${UNBOLD} service check ${SERVICE} return code: ${TAB}${RC}${ESC}0m\n"; WARN=$((WARN+1))
+          printf "${YELLOW}${BOLD}WARN${NORMAL}: ${BOLD}Disabled${NORMAL} service check ${SERVICE} return code: ${TAB}${RC}${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE; WARN=$((WARN+1))
         else
-          printf "${ESC};31m${BOLD}FAIL${UNBOLD}: Service check ${SERVICE} return code: ${TAB}${RC}${ESC}0m\n"; FAIL=$((FAIL+1))
+          printf "${RED}${BOLD}FAIL${NORMAL}: Service check ${SERVICE} return code: ${TAB}${RC}${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE; FAIL=$((FAIL+1))
         fi
       else
         if egrep -q "^${SERVICE}$" ${DISABLED_LIST}; then
-          printf "${ESC};31m${BOLD}FAIL${UNBOLD}: ${BOLD}disabled${UNBOLD} Service check ${SERVICE} return code: ${TAB}${RC}${ESC}0m\n"; FAIL=$((FAIL+1))
+          printf "${RED}${BOLD}FAIL${NORMAL}: ${BOLD}disabled${NORMAL} Service check ${SERVICE} return code: ${TAB}${RC}${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE; FAIL=$((FAIL+1))
         else
-          printf "${ESC};32m${BOLD}OKAY${UNBOLD}: Service check ${SERVICE} return code: ${TAB}${RC}${ESC}0m\n"
+          printf "${GREEN}${BOLD}OKAY${NORMAL}: Service check ${SERVICE} return code: ${TAB}${RC}${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE
         fi
       fi
     done
@@ -98,10 +109,9 @@ service() {
 
 # Marker function
 marker() {
-  printf "${ESC};4m${BOLD}Checking failed/deployed markers on all servers\n${ESC}0m"
-  for SERVER in PNAPP PNBOAPP PNCRM PNGAME PN2PAM PN2CONNECT PN2BOAPP; do
+  for SERVER in PDAPP PDBOAPP PDCRM PDGAME CMDPAM CMDCONNECT CMDBOAPP; do
     for CONTAINER in `cat ${CONFDIR}/${SERVER}-container-list`; do
-      printf "${ESC}4m\nSearching for markers on ${!SERVER} in /usr/share/jbossas/${CONTAINER}${ESC}0m\n"
+      printf "\n${ESC}4m${BOLD}Searching for markers on ${!SERVER} in /usr/share/jbossas/${CONTAINER}${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE
       EXIST_CHECK=`sshpass -p ${PASS} ssh -q -t -o StrictHostKeyChecking=no $USER@${!SERVER} "${SUDO_PREFIX} /bin/sh -c \"[[ -e /usr/share/jbossas/${CONTAINER}/deployments ]]\""`; RC=$?
       if [[ $RC -eq 0 ]]; then
         sshpass -p ${PASS} ssh -q -t -o StrictHostKeyChecking=no $USER@${!SERVER} "${SUDO_PREFIX} /bin/sh -c \"find /usr/share/jbossas/${CONTAINER}/deployments -name '*.deployed'\"" > ${TMPDIR}/${SERVER}-${CONTAINER}.deployed
@@ -110,31 +120,31 @@ marker() {
       	FAILED=`grep -v sudo $TMPDIR/${SERVER}-${CONTAINER}.failed | wc -l`
         if [[ $DEPLOYED -gt 1 ]]; then
           if egrep -q "^${CONTAINER}$" ${DISABLED_LIST}; then
-            echo -e "${ESC};31m${BOLD}FAIL${UNBOLD}: Found *.deployed files, even though container ${CONTAINER} is ${BOLD}disabled${UNBOLD}!\n\n
-            ${BOLD}Deployed:${UNBOLD}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.deployed | grep -v sudo`${ESC}0m\n"
+            echo -e "${RED}${BOLD}FAIL${NORMAL}: Found *.deployed files, even though container ${CONTAINER} is ${BOLD}disabled${NORMAL}!\n\n
+            ${BOLD}Deployed:${NORMAL}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.deployed | grep -v sudo`${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE
             FAIL=$((FAIL+1))
           else
-            printf "${ESC};32m${BOLD}OKAY${UNBOLD}: Found *.deployed files in ${CONTAINER} container.\n\n${BOLD}Deployed:${UNBOLD}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.deployed | grep -v sudo`${ESC}0m\n"
+            printf "${GREEN}${BOLD}OKAY${NORMAL}: Found *.deployed files in ${CONTAINER} container.\n\n${BOLD}Deployed:${NORMAL}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.deployed | grep -v sudo`${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE
           fi
         else
           if egrep -q "^${CONTAINER}$" ${DISABLED_LIST}; then
-            printf "${ESC};33m${BOLD}WARN${UNBOLD}: No *.deployed files found in ${BOLD}disabled${UNBOLD} container ${CONTAINER}.\n${ESC}0m"; WARN=$((WARN+1))
+            printf "${YELLOW}${BOLD}WARN${NORMAL}: No *.deployed files found in ${BOLD}disabled${NORMAL} container ${CONTAINER}.${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE; WARN=$((WARN+1))
           else
-            printf "${ESC};31m${BOLD}FAIL${UNBOLD}: No *.deployed files found in container ${CONTAINER}!\n${ESC}0m"; FAIL=$((FAIL+1))
+            printf "${RED}${BOLD}FAIL${NORMAL}: No *.deployed files found in container ${CONTAINER}!${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE; FAIL=$((FAIL+1))
           fi
         fi
         if [[ $FAILED -gt 1 ]]; then
           if egrep -q "^${CONTAINER}$" ${DISABLED_LIST}; then
-            echo -e "${ESC};31m${BOLD}FAIL${UNBOLD}: Found *.failed files, even though container ${CONTAINER} is ${BOLD}disabled${UNBOLD}!\n\n${BOLD}Failed:${UNBOLD}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.failed | grep -v sudo`${ESC}0m"; FAIL=$((FAIL+1))
+            echo -e "${RED}${BOLD}FAIL${NORMAL}: Found *.failed files, even though container ${CONTAINER} is ${BOLD}disabled${NORMAL}!\n\n${BOLD}Failed:${NORMAL}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.failed | grep -v sudo`${NORMAL}" | tee -a $LOGDIR/$LOGFILE; FAIL=$((FAIL+1))
           else
-            printf "${ESC};31m\n${BOLD}Failed:${UNBOLD}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.failed | grep -v sudo`\n${ESC}0m"; FAIL=$((FAIL+1))
+            printf "${RED}\n${BOLD}Failed:${NORMAL}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.failed | grep -v sudo`${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE; FAIL=$((FAIL+1))
           fi
         fi
       else
         if egrep -q "^${CONTAINER}$" ${DISABLED_LIST}; then
-          printf "${ESC};33m${BOLD}WARN${UNBOLD}: Directory /usr/share/jbossas/${CONTAINER} (${BOLD}disabled${UNBOLD}) doesn't exists.\n${ESC}0m"; WARN=$((WARN+1))
+          printf "${YELLOW}${BOLD}WARN${NORMAL}: Directory /usr/share/jbossas/${CONTAINER} (${BOLD}disabled${NORMAL}) doesn't exists.${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE; WARN=$((WARN+1))
         else
-          printf "${ESC};31m${BOLD}FAIL${UNBOLD}: Directory /usr/share/jbossas/${CONTAINER} doesn't exists.\n${ESC}0m"; FAIL=$((FAIL+1))
+          printf "${RED}FAIL: Directory /usr/share/jbossas/${CONTAINER} doesn't exists.${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE; FAIL=$((FAIL+1))
         fi
       fi
     done
@@ -157,20 +167,20 @@ esac
 
 # Status
 status() {
-  printf "\n\n${ESC};4m${BOLD}Status:${ESC}0m\n"
+  printf "\n\n${ESC}4m${BOLD}Status:${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE
   if [ $FAIL -gt 0 ]; then
-    printf "${ESC};31m${BOLD}FAIL${UNBOLD}: number of fails: ${FAIL}.\n${ESC}0m";
+    printf "${RED}${BOLD}FAIL${NORMAL}: number of fails: ${FAIL}.${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE;
     if [ $WARN -gt 0 ]; then
-      printf "${ESC};33m${BOLD}WARN${UNBOLD}: number of warnings: ${WARN}.\n${ESC}0m"
+      printf "${YELLOW}${BOLD}WARN${NORMAL}: number of warnings: ${WARN}.${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE
     fi
     printf 'Check the log!'
     exit 1
   else
-    printf "${ESC};32m${BOLD}OKAY${UNBOLD}: number of fails: ${FAIL}.\n${ESC}0m"
+    printf "${GREEN}${BOLD}OKAY${NORMAL}: number of fails: ${FAIL}.${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE
     if [ $WARN -gt 0 ]; then
-      printf "${ESC};33m${BOLD}WARN${UNBOLD}: number of warnings: ${WARN}\n\n${BOLD}Check the log just in case...\n${ESC}0m"
+      printf "${YELLOW}${BOLD}WARN${NORMAL}: number of warnings: ${WARN}. ${BOLD}Check the log just in case...${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE
     fi
-    printf "${ESC};32m${BOLD}You\'re all set!${ESC}0m\n\n"
+    printf "${GREEN}${BOLD}You\'re all set!${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE
     exit 0
   fi
 }
