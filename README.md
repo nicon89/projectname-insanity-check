@@ -21,7 +21,7 @@ you need to run it few minutes after the deployment (not release, for duck sake)
 
 ##### Setup requirements
 
-you need to have brainz and ssh-kinda-tool and no zombies around.
+you need to have brainz, ssh-kinda-tool and no zombies around.
 
 ##### Usage
 
@@ -31,11 +31,11 @@ upa.8vm1337#
 vm1337 # 
 vm1337 # 
 vm1337 # 
-vm1337 # yum install screen sshpass
+vm1337 # yum install sshpass
 vm1337 # git clone git@github.com:nicon89/ref-insanity-check.git
 vm1337 # cd ref-insanity-check
 vm1337 # curl wiki/hosts | awk {'print $1'} >> hosts/devjboss (if you know what I mean)
-# if your servers don't include name in hostname you can use this:
+# if your servers don't include type in hostname you can use this:
 # xyz1337 PNWEB
 # xyz420 PN2BOAPP
 # xyz2137 PN2GAME
