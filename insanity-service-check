@@ -116,7 +116,7 @@ marker() {
           sshpass -p ${PASS} ssh -q -t -o StrictHostKeyChecking=no $USER@${!SERVER} "${SUDO_PREFIX} /bin/sh -c \"find /usr/share/jbossas/${CONTAINER}/deployments -name '*.failed'\"" > ${TMPDIR}/${SERVER}-${CONTAINER}.failed
           DEPLOYED=`grep -v sudo $TMPDIR/${SERVER}-${CONTAINER}.deployed | wc -l`
           FAILED=`grep -v sudo $TMPDIR/${SERVER}-${CONTAINER}.failed | wc -l`
-          if [[ $DEPLOYED -gt 1 ]]; then
+          if [[ $DEPLOYED -gt 0 ]]; then
             if egrep -q "^${CONTAINER}$" ${DISABLED_LIST}; then
               echo -e "${RED}${BOLD}FAIL${NORMAL}: Found *.deployed files, even though container ${CONTAINER} is ${BOLD}disabled${NORMAL}!\n\n
               ${BOLD}Deployed:${NORMAL}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.deployed | grep -v sudo`${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE
@@ -131,7 +131,7 @@ marker() {
               printf "${RED}${BOLD}FAIL${NORMAL}: No *.deployed files found in container ${CONTAINER}!${NORMAL}\n" | tee -a $LOGDIR/$LOGFILE; FAIL=$((FAIL+1))
             fi
           fi
-          if [[ $FAILED -gt 1 ]]; then
+          if [[ $FAILED -gt 0 ]]; then
             if egrep -q "^${CONTAINER}$" ${DISABLED_LIST}; then
               echo -e "${RED}${BOLD}FAIL${NORMAL}: Found *.failed files, even though container ${CONTAINER} is ${BOLD}disabled${NORMAL}!\n\n${BOLD}Failed:${NORMAL}\n`cat $TMPDIR/${SERVER}-${CONTAINER}.failed | grep -v sudo`${NORMAL}" | tee -a $LOGDIR/$LOGFILE; FAIL=$((FAIL+1))
             else
